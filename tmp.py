@@ -21,23 +21,36 @@ for item in tqdm(valid):
 
 from tqdm import tqdm
 import shutil
-from keras.applications.vgg16 import VGG16
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, ConvLSTM2D, TimeDistributed, CuDNNLSTM
-from keras.models import Model
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.metrics import top_k_categorical_accuracy
 import os
 
 for i in tqdm(range(1,129)):
     num_img = len(os.listdir('assets/train/'+ str(i) + '/'))
-    #shutil.copytree('assets/train/'+ str(i) + '/', 'assets/tmp2/'+ str(i) + '/'+ str(i) + '/')
+    shutil.copytree('assets/train/'+ str(i) + '/', 'assets/tmp/'+ str(i) + '/'+ str(i) + '/')
     train_data_gen = ImageDataGenerator()
-    if not os.path.exists('assets/tmp3/'+ str(i) + '/'):
-        os.mkdir('assets/tmp3/'+ str(i) + '/')
-    train_generator = train_data_gen.flow_from_directory(directory='assets/tmp2/'+ str(i) + '/',
+    if not os.path.exists('assets/train_224/'+ str(i) + '/'):
+        os.mkdir('assets/train_224/'+ str(i) + '/')
+    train_generator = train_data_gen.flow_from_directory(directory='assets/tmp/'+ str(i) + '/',
                                                          target_size=(224, 224),
                                                          batch_size=num_img,
-                                                         class_mode='categorical', save_to_dir='assets/tmp3/'+ str(i) + '/',shuffle=False)
+                                                         class_mode='categorical', save_to_dir='assets/train_224/'+ str(i) + '/',shuffle=False)
     _ = train_generator.next()
+
+
+from tqdm import tqdm
+import shutil
+from keras.preprocessing.image import ImageDataGenerator
+import os
+import numpy as np
+z = []
+for i in tqdm(range(81,129)):
+    num_img = len(os.listdir('assets/train_224/'+ str(i) + '/'))
+    shutil.copytree('assets/train_224/'+ str(i) + '/', 'assets/tmp/'+ str(i) + '/'+ str(i) + '/')
+    train_data_gen = ImageDataGenerator(rescale=1./255)
+    train_generator = train_data_gen.flow_from_directory(directory='assets/tmp/'+ str(i) + '/',
+                                                         target_size=(224, 224),
+                                                         batch_size=num_img,
+                                                         class_mode='categorical',shuffle=False)
+    x = train_generator.next()
+    np.savez_compressed('assets/train_np/' + str(i),np.array(x[0]))
+    shutil.rmtree('assets/tmp/'+ str(i) + '/'+ str(i) + '/')
