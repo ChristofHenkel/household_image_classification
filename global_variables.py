@@ -1,3 +1,5 @@
 TRAIN_DATA_FN = 'assets/train.json'
 TEST_DATA_FN = 'assets/test.json'
 VALID_DATA_FN = 'assets/validation.json'
+SAMPLE_SUBMISSION = 'assets/sample_submission_randomlabel.csv'
+TEST_FOLDER = 'assets/test/'

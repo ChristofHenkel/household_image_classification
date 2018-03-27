@@ -1,2 +1,4 @@
 assets/
 *.hdf5
+.idea/
+.ipynb_checkpoints/
