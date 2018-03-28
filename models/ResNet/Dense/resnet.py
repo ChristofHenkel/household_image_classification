@@ -51,7 +51,7 @@ model = Model(inputs=base_model.input, outputs=predictions)
 model.summary()
 # compile the model (should be done *after* setting layers to non-trainable)
 model.compile(optimizer=Adam(lr = 0.00001), loss='categorical_crossentropy',metrics=[top1_loss])
-file_path = 'models/ResNet/resnet2/resnet.hdf5'
+file_path = 'models/ResNet/Dense/resnet.hdf5'
 # train the model on the new data for a few epochs
 check_point = ModelCheckpoint(file_path, monitor="val_loss", mode="min", save_best_only=True, verbose=1)
 early_stop = EarlyStopping(patience=5)

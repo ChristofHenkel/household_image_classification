@@ -70,3 +70,8 @@ for n in new:
     im = Image.open('/home/christof/Downloads/test/' + n + '.png')
     rgb_im = im.convert('RGB')
     rgb_im.save('assets/test/' + n + '.jpg')
+
+from keras.applications.inception_resnet_v2 import InceptionResNetV2
+
+model = InceptionResNetV2(include_top=False,input_shape=(224,224,3))
+model.summary()

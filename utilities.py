@@ -12,7 +12,7 @@ def save_traing_df():
     train_data = data_url.merge(labels, how='inner', on=['image_id'])
     train_data['url'] = train_data['url'].str.get(0)
     del data, data_url, labels
-    train_data.to_csv('assets/train_data.csv')
+    train_data.to_csv('assets/train_data.csv', index=False)
 
 def save_valid_df():
     data = json.load(open(VALID_DATA_FN))
