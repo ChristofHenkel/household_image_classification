@@ -54,3 +54,24 @@ for i in tqdm(range(81,129)):
     x = train_generator.next()
     np.savez_compressed('assets/train_np/' + str(i),np.array(x[0]))
     shutil.rmtree('assets/tmp/'+ str(i) + '/'+ str(i) + '/')
+
+
+
+
+
+ids = [fn[:-4] for fn in os.listdir('assets/test/')]
+ids2 = [fn[:-4] for fn in os.listdir('/home/christof/Downloads/test/')]
+new = [i for i in ids2 if i not in ids]
+
+from PIL import Image
+for n in new:
+
+
+    im = Image.open('/home/christof/Downloads/test/' + n + '.png')
+    rgb_im = im.convert('RGB')
+    rgb_im.save('assets/test/' + n + '.jpg')
+
+from keras.applications.inception_resnet_v2 import InceptionResNetV2
+
+model = InceptionResNetV2(include_top=False,input_shape=(224,224,3))
+model.summary()

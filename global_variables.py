@@ -1,3 +1,6 @@
 TRAIN_DATA_FN = 'assets/train.json'
 TEST_DATA_FN = 'assets/test.json'
 VALID_DATA_FN = 'assets/validation.json'
+SAMPLE_SUBMISSION = 'assets/sample_submission_randomlabel.csv'
+TEST_FOLDER = 'assets/test/'
+IMAGE_NET_MEAN = [103.939, 116.779, 123.68]

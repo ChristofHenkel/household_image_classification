@@ -1,2 +1,6 @@
 assets/
 *.hdf5
+.idea/
+.ipynb_checkpoints/
+*.csv
+__pycache__/
