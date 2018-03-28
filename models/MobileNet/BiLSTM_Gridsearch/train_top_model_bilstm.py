@@ -39,8 +39,8 @@ def data_gen_valid():
 
 runs = {}
 params = {}
-units = [128,512]
-dropout = [0.4,0.5,0.6]
+units = [1024]
+dropout = [0.6,0.7]
 run_id = 0
 for u in units:
     for d in dropout:
@@ -65,7 +65,8 @@ for u in units:
                             steps_per_epoch=5400,
                             epochs = 100)
 
-        loss = np.min(history.history['val_loss'])
+
         runs[run_id] = {'units':u,
                         'dropout':d,
-                        'val_loss':loss}
+                        'val_loss':np.min(history.history['val_loss']),
+                        'val_top1_loss':np.min(history.history['val_top1_loss'])}
