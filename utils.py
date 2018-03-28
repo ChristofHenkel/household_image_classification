@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from global_variables import TRAIN_DATA_FN, TEST_DATA_FN, VALID_DATA_FN
+from keras.metrics import top_k_categorical_accuracy
 
 #load data
 def save_traing_df():
@@ -28,3 +29,7 @@ def save_test_df():
     #Saved On Data Frame
     data_url = pd.DataFrame.from_dict(data['images'])
     data_url.to_csv('assets/test_data.csv', index=False)
+
+
+def top1_loss(y_true,y_pred):
+    return 1- top_k_categorical_accuracy(y_true,y_pred,k=1)
