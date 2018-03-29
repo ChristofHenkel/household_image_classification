@@ -41,7 +41,7 @@ def data_gen_valid():
 inp = Input(shape=(7,7,1024))
 main = TimeDistributed(Bidirectional(CuDNNLSTM(256)))(inp)
 main = Bidirectional(CuDNNLSTM(256))(main)
-main = layers.Dropout(0.5)(main)
+main = layers.Dropout(0.4)(main)
 out = Dense(128, activation = 'sigmoid')(main)
 
 model = Model(inputs=inp, outputs = out)
@@ -49,7 +49,7 @@ model.compile(optimizer=Adam(lr = 0.0001), loss='categorical_crossentropy',metri
 model.summary()
 
 
-check_point = ModelCheckpoint('models/MobileNet/BiLSTM_256_dropout_0.6/top_model.hdf5', monitor="val_loss", mode="min", save_best_only=True, verbose=1)
+check_point = ModelCheckpoint('models/MobileNet/BiLSTM_256/top_model.hdf5', monitor="val_loss", mode="min", save_best_only=True, verbose=1)
 early_stop = EarlyStopping(patience=3)
 history = model.fit_generator(data_gen_train(),
                     validation_data = data_gen_valid(),
