@@ -2,7 +2,7 @@ import numpy as np
 import os
 import pickle
 from tqdm import tqdm
-from keras.layers import Input, Dense, Bidirectional, Conv1D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
+from keras.layers import Input, Dense,SeparableConv2D, Bidirectional, Conv2D, Flatten, MaxPool2D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
 from keras import layers
 from keras.callbacks import EarlyStopping,ModelCheckpoint
 from keras.models import Sequential, Model
@@ -14,7 +14,7 @@ from utilities import top1_loss
 
 bn_folder = 'assets/bn_mobilenet_224/'
 fns = os.listdir(bn_folder)
-random.shuffle(fns,random=43)
+random.shuffle(fns,random=random.seed(43))
 split_at = len(fns)//10
 fns_train = fns[split_at:]
 fns_valid = fns[:split_at]
@@ -39,8 +39,9 @@ def data_gen_valid():
 
 
 inp = Input(shape=(7,7,1024))
-main = TimeDistributed(Bidirectional(CuDNNLSTM(256)))(inp)
-main = Bidirectional(CuDNNLSTM(256))(main)
+main = layers.SeparableConv2D(2048,3,padding='same')(inp)
+main = layers.AveragePooling2D((3,3))(main)
+main = Flatten()(main)
 main = layers.Dropout(0.4)(main)
 out = Dense(128, activation = 'sigmoid')(main)
 
@@ -49,7 +50,7 @@ model.compile(optimizer=Adam(lr = 0.0001), loss='categorical_crossentropy',metri
 model.summary()
 
 
-check_point = ModelCheckpoint('models/MobileNet/BiLSTM_256/top_model.hdf5', monitor="val_loss", mode="min", save_best_only=True, verbose=1)
+check_point = ModelCheckpoint('models/MobileNet/CNN/top_model.hdf5', monitor="val_loss", mode="min", save_best_only=True, verbose=1)
 early_stop = EarlyStopping(patience=3)
 history = model.fit_generator(data_gen_train(),
                     validation_data = data_gen_valid(),
