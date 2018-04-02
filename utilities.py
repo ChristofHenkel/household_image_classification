@@ -33,3 +33,11 @@ def save_test_df():
 
 def top1_loss(y_true,y_pred):
     return 1- top_k_categorical_accuracy(y_true,y_pred,k=1)
+
+def grid_search_generator(building_model_func, params, callbacks, train_gen, valid_gen, summary_path):
+
+    for param in params:
+        for value in param:
+            model = building_model_func()
+            history = model.fit_generator()
+            pass
