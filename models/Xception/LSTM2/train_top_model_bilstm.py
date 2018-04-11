@@ -42,6 +42,7 @@ def data_gen_valid():
 def build_model(units, dropout):
     inp = Input(shape=(7,7,2048))
     main = TimeDistributed(Bidirectional(CuDNNLSTM(units)))(inp)
+    main = layers.SpatialDropout1D(dropout)(main)
     main = Bidirectional(CuDNNLSTM(units))(main)
     main = layers.Dropout(dropout)(main)
     out = Dense(128, activation = 'sigmoid')(main)
@@ -97,8 +98,8 @@ model.compile(loss='mse', optimizer=sgd)
 model.fit(x, y, callbacks=[SGDLearningRateTracker()])
 """
 grid_search_generator(build_model,
-                      units=[256,512],
-                      dropouts=[0.4,0.5,0.6],
+                      units=[256],
+                      dropouts=[0.4],
                       train_gen=data_gen_train,
                       valid_gen=data_gen_valid,
-                      path='models/Xception/LSTM/')
+                      path='models/Xception/LSTM2/')

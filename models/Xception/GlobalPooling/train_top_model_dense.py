@@ -2,11 +2,11 @@ import numpy as np
 import os
 import pickle
 from tqdm import tqdm
-from keras.layers import Input, Dense, Bidirectional,LSTM, Conv1D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
+from keras.layers import Input, Dense,Dropout, Bidirectional,LSTM, Conv1D, AveragePooling2D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
 from keras import layers
 from keras.callbacks import EarlyStopping,ModelCheckpoint, Callback
 from keras.models import Sequential, Model
-from keras.optimizers import Adam, SGD
+from keras.optimizers import Nadam, SGD, Adam
 from keras import backend as K
 from sklearn.model_selection import train_test_split
 from keras.metrics import top_k_categorical_accuracy
@@ -39,18 +39,20 @@ def data_gen_valid():
 
             yield content[0], content[1]
 
-def build_model(units, dropout):
+
+
+def build_model(lr, dropout):
     inp = Input(shape=(7,7,2048))
-    main = TimeDistributed(Bidirectional(CuDNNLSTM(units)))(inp)
-    main = Bidirectional(CuDNNLSTM(units))(main)
-    main = layers.Dropout(dropout)(main)
+    main = GlobalAveragePooling2D()(inp)
+    main2 =GlobalMaxPool2D()(inp)
+    main = layers.Concatenate()([main,main2])
+    main = Dropout(dropout)(main)
     out = Dense(128, activation = 'sigmoid')(main)
 
     model = Model(inputs=inp, outputs = out)
-    model.compile(optimizer=Adam(lr = 0.0001), loss='categorical_crossentropy',metrics=[top1_loss])
+    model.compile(optimizer=Adam(lr = lr), loss='categorical_crossentropy',metrics=[top1_loss])
     model.summary()
     return model
-
 
 class LearningRateTracker(Callback):
     def on_epoch_end(self, epoch, logs=None):
@@ -58,13 +60,13 @@ class LearningRateTracker(Callback):
         lr = K.eval(optimizer.lr * (1. / (1. + optimizer.decay * optimizer.iterations)))
         print('\nLR: {:.6f}\n'.format(lr))
 
-def grid_search_generator(building_model_func, units, dropouts, train_gen, valid_gen, path):
+def grid_search_generator(building_model_func, lrs, dropouts, train_gen, valid_gen, path):
 
 
-    for u in units:
+    for lr in lrs:
         for d in dropouts:
-            model = building_model_func(units=u, dropout = d)
-            check_point = ModelCheckpoint(path + 'top_model_' + '_'.join([str(u),str(d)]) + '.hdf5',
+            model = building_model_func(lr = lr, dropout = d)
+            check_point = ModelCheckpoint(path + 'top_model_' + '_'.join([str(lr),str(d)]) + '.hdf5',
                                           monitor="val_loss", mode="min",
                                           save_best_only=True, verbose=1)
             early_stop = EarlyStopping(patience=3)
@@ -77,7 +79,7 @@ def grid_search_generator(building_model_func, units, dropouts, train_gen, valid
             best_val = min(history.history['val_loss'])
             best_val_top1 = min(history.history['val_top1_loss'])
             with open(path + 'summary.txt','a') as f:
-                f.write(', '.join([str(units),str(d),str(best_val),str(best_val_top1)]) + '\n')
+                f.write(', '.join([str(lr),str(d),str(best_val),str(best_val_top1)]) + '\n')
 
 #class LearningRateTracker(Callback):
 #    def on_epoch_end(self, epoch, logs=None):
@@ -97,8 +99,8 @@ model.compile(loss='mse', optimizer=sgd)
 model.fit(x, y, callbacks=[SGDLearningRateTracker()])
 """
 grid_search_generator(build_model,
-                      units=[256,512],
-                      dropouts=[0.4,0.5,0.6],
+                      lrs=[0.0001],
+                      dropouts=[0.4],
                       train_gen=data_gen_train,
                       valid_gen=data_gen_valid,
-                      path='models/Xception/LSTM/')
+                      path='models/Xception/GlobalPooling/')

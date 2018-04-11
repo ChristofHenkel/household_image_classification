@@ -2,9 +2,9 @@ import numpy as np
 import os
 import pickle
 from tqdm import tqdm
-from keras.layers import Input, Dense, Bidirectional,LSTM, Conv1D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
+from keras.layers import Input, Dense, Bidirectional,CuDNNGRU, Conv1D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
 from keras import layers
-from keras.callbacks import EarlyStopping,ModelCheckpoint, Callback
+from keras.callbacks import EarlyStopping,ModelCheckpoint, Callback, ReduceLROnPlateau
 from keras.models import Sequential, Model
 from keras.optimizers import Adam, SGD
 from keras import backend as K
@@ -14,7 +14,7 @@ import random
 import gzip
 from utilities import top1_loss
 
-bn_folder = 'assets/bn_xception_train_224/'
+bn_folder = 'assets/bn_DenseNet201_train_224/'
 fns = os.listdir(bn_folder)
 random.shuffle(fns,random=random.seed(43))
 split_at = len(fns)//10
@@ -39,10 +39,9 @@ def data_gen_valid():
 
             yield content[0], content[1]
 
-def build_model(units, dropout):
-    inp = Input(shape=(7,7,2048))
-    main = TimeDistributed(Bidirectional(CuDNNLSTM(units)))(inp)
-    main = Bidirectional(CuDNNLSTM(units))(main)
+def build_model(dropout):
+    inp = Input(shape=(7,7,1024))
+    main = Flatten()(inp)
     main = layers.Dropout(dropout)(main)
     out = Dense(128, activation = 'sigmoid')(main)
 
@@ -63,14 +62,15 @@ def grid_search_generator(building_model_func, units, dropouts, train_gen, valid
 
     for u in units:
         for d in dropouts:
-            model = building_model_func(units=u, dropout = d)
+            model = building_model_func(dropout = 0.5)
             check_point = ModelCheckpoint(path + 'top_model_' + '_'.join([str(u),str(d)]) + '.hdf5',
                                           monitor="val_loss", mode="min",
                                           save_best_only=True, verbose=1)
-            early_stop = EarlyStopping(patience=3)
+            early_stop = EarlyStopping(patience=4)
+            reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5,patience=2, min_lr=0)
             history = model.fit_generator(train_gen(),
                                           validation_data = valid_gen(),
-                                          callbacks=[early_stop, check_point],
+                                          callbacks=[early_stop, check_point,reduce_lr],
                                           validation_steps= 540,
                                           steps_per_epoch=5400,
                                           epochs = 100)
@@ -97,8 +97,8 @@ model.compile(loss='mse', optimizer=sgd)
 model.fit(x, y, callbacks=[SGDLearningRateTracker()])
 """
 grid_search_generator(build_model,
-                      units=[256,512],
-                      dropouts=[0.4,0.5,0.6],
+                      units=[256],
+                      dropouts=[0.5],
                       train_gen=data_gen_train,
                       valid_gen=data_gen_valid,
-                      path='models/Xception/LSTM/')
+                      path='models/DenseNet121/Flat/')

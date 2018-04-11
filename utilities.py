@@ -2,7 +2,8 @@ import json
 import pandas as pd
 from global_variables import TRAIN_DATA_FN, TEST_DATA_FN, VALID_DATA_FN
 from keras.metrics import top_k_categorical_accuracy
-
+from keras.preprocessing.image import ImageDataGenerator
+from keras.models import load_model
 #load data
 def save_traing_df():
     data = json.load(open(TRAIN_DATA_FN))
@@ -34,10 +35,14 @@ def save_test_df():
 def top1_loss(y_true,y_pred):
     return 1- top_k_categorical_accuracy(y_true,y_pred,k=1)
 
-def grid_search_generator(building_model_func, params, callbacks, train_gen, valid_gen, summary_path):
-
-    for param in params:
-        for value in param:
-            model = building_model_func()
-            history = model.fit_generator()
-            pass
+def score_model(model_fn, image_size = (224,224)):
+    #model_fn = 'models/InceptionResNetV2/LSTM/inception_resnet_lstm.hdf5'
+    valid_data_gen = ImageDataGenerator(rescale=1. / 255)
+    valid_generator = valid_data_gen.flow_from_directory(directory='assets/valid/',
+                                                         target_size=image_size,
+                                                         batch_size=32,
+                                                         class_mode='categorical',
+                                                         shuffle=False)
+    model = load_model(model_fn,custom_objects={'top1_loss': top1_loss})
+    score = model.evaluate_generator(valid_generator,197)
+    return score
