@@ -1,7 +1,8 @@
 """
 Each label has approx 50 images
 """
-# TODO: Neural network is overfitting or not working
+# TODO: Neural network is strongly overfitting!!!
+import inspect
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,9 @@ import global_variables
 from sklearn.preprocessing import normalize
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import BaggingClassifier, AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 
 from keras.layers import Input, Dense, Conv1D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
 from keras import layers
@@ -18,9 +22,9 @@ from keras.models import Sequential, Model
 from keras.layers import Dense
 from keras.optimizers import Adam, SGD
 from sklearn.model_selection import cross_val_score
-from keras.callbacks import EarlyStopping,ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-import xgboost as xgb
+from catboost import CatBoostRegressor,CatBoostClassifier
 from xgboost import XGBRegressor
 
 from utilities import acc_prediction_valid, bag_by_average, bag_by_geomean, top1_loss
@@ -44,8 +48,15 @@ MODELS = ['models/Inceptionv3/Inception_LSTM/',
           'models/DenseNet201/Last_layer_with_dropout/'
           ]
 
-CLASSIFIERS = ['xgb', 'lr', 'nn_keras'] # 'nn' #, 'lgb'] #nn, catboost
+NEURALCLASSIFIERS = [] # ['nn', 'nn_keras']
 
+CLASSICCLASSIFIERS = \
+    ['random_forest',
+    # 'gradient_boosting',
+     #'decision_tree',
+    # 'logistic_regression',
+    # 'xgb',
+    ]
 
 class CSVPredictions():
     '''
@@ -77,10 +88,10 @@ class CSVPredictions():
         #shuffle data, since predictions are ordered
         predictions = np.transpose(predictions, (1,0,2))
         predictions = predictions[indices]
-        labels = labels[indices]
-
         train_pred, valid_pred = predictions[:split], predictions[split:]
         train_pred, valid_pred = np.transpose(train_pred, (1,0,2)), np.transpose(valid_pred, (1,0,2))
+
+        labels = labels[indices]
 
         return train_pred, valid_pred, labels[:split], labels[split:]
 
@@ -187,7 +198,7 @@ class Bagging():
         0.157711206213346
         """
 
-        weights = [1., 1., 0., 0., 1., 1., 1., 1., 2., 2.]
+        weights = [1., 1., 0.5, 0.5, 1., 1., 1., 1., 2., 2.]
         weights /= np.sum(weights)
 
         bagged_predicts = np.zeros((self.number_of_samples, NUMBER_OF_CLASSES))
@@ -210,37 +221,80 @@ assert TEST_LABELS_AS_SPASRE[:, 1].all() == TWO_HOT.all()
 
 
 class Regressions(Bagging):
-
+    '''
+    Several methods from sklearn, together with xgb. One can implement more methods from sklearn.
+    '''
     def __init__(self, predictions, labels):
         super().__init__(predictions, labels)
+
+    def train_random_forest(self):
+        return self._train_classifier(RandomForestClassifier,
+                                      n_estimators=60,
+                                      criterion='gini',
+                                      max_depth = None,
+                                      min_samples_split = 2,
+                                      min_samples_leaf = 1,
+                                      min_weight_fraction_leaf = 0.0,
+                                      max_features ='auto',
+                                      max_leaf_nodes = None,
+                                      min_impurity_decrease = 0.0,
+                                      min_impurity_split = None,
+                                      bootstrap = True,
+                                      oob_score = False,
+                                      n_jobs = 1,
+                                      random_state = None,
+                                      verbose = 0,
+                                      warm_start = True,
+                                      class_weight = None)
+
+    def predict_random_forest(self, classifiers):
+        return self._predict_sklearn(classifiers)
+
+    def train_gradient_boosting(self):
+        return self._train_classifier(GradientBoostingClassifier,
+                                      loss='deviance',
+                                      learning_rate = 0.1,
+                                      n_estimators = 100,
+                                      subsample = 1.0,
+                                      criterion ='friedman_mse',
+                                      min_samples_split = 2,
+                                      min_samples_leaf = 1,
+                                      min_weight_fraction_leaf = 0.0,
+                                      max_depth = 3,
+                                      min_impurity_decrease = 0.0,
+                                      min_impurity_split = None,
+                                      init = None,
+                                      random_state = None,
+                                      max_features = None,
+                                      verbose = 0,
+                                      max_leaf_nodes = None,
+                                      warm_start = False,
+                                      presort ='auto')
+
+    def predict_gradient_boosting(self, classifiers):
+        return self._predict_sklearn(classifiers)
+
+    def train_decision_tree(self):
+        return self._train_classifier(DecisionTreeClassifier,
+                                      criterion='gini',
+                                      splitter='best',
+                                      max_depth=None,
+                                      min_samples_split=2, min_samples_leaf=1,
+                                      min_weight_fraction_leaf=0.0, max_features=None,
+                                      random_state=None, max_leaf_nodes=None,
+                                      min_impurity_decrease=0.0,
+                                      min_impurity_split=None,
+                                      class_weight=None,
+                                      presort=False)
+
+    def predict_decision_tree(self, classifiers):
+        return self._predict_sklearn(classifiers)
 
     def train_logistic_regression(self):
         return self._train_classifier(LogisticRegression)
 
     def predict_logistic_regression(self, classifiers):
-        # generate for each sample a probability distribution.
-        predict_logistic = np.zeros((self.number_of_samples, NUMBER_OF_CLASSES))
-        for i in range(NUMBER_OF_CLASSES):
-            x_train = np.transpose(self.model_predictions[:, :, i])
-            # save only the probability of class being 1
-            predict_logistic[:, i] = classifiers[i].predict_proba(x_train)[:, 1]
-
-        predictions = normalize(predict_logistic, norm='l1', axis=1, copy=True, return_norm=False)
-
-        return predictions
-
-    def _train_classifier(self, classifier, **kwargs):
-        classifiers = []
-
-        for i in range(NUMBER_OF_CLASSES):
-            print('fitting on class {}'.format(i))
-            clf = classifier(**kwargs)
-            # transpose for shape (self.number_of_samples, len(models))
-            x_train = np.transpose(self.model_predictions[:, :, i])
-            y_train = self.sparse_labels[:, i]
-            clf.fit(x_train, y_train)
-            classifiers.append(clf)
-        return classifiers
+        return self._predict_sklearn(classifiers)
 
     def train_xgb(self):
         return self._train_classifier(XGBRegressor, objective='reg:logistic', max_depth=2, n_estimators=100,\
@@ -255,6 +309,58 @@ class Regressions(Bagging):
         predictions = normalize(predict_xgb, norm='l1', axis=1, copy=True, return_norm=False)
 
         return predictions
+
+    def _train_classifier(self, classifier, *args, **kwargs):
+        classifiers = []
+
+        for i in range(NUMBER_OF_CLASSES):
+            # print('fitting on class {}'.format(i))
+            clf = classifier(*args, **kwargs)
+            # transpose for shape (self.number_of_samples, len(models))
+            x_train = np.transpose(self.model_predictions[:, :, i])
+            y_train = self.sparse_labels[:, i]
+            clf.fit(x_train, y_train)
+            classifiers.append(clf)
+        return classifiers
+
+    def _predict_sklearn(self, classifiers):
+        # generate for each sample a probability distribution.
+        predictions = np.zeros((self.number_of_samples, NUMBER_OF_CLASSES))
+        for i in range(NUMBER_OF_CLASSES):
+            x_train = np.transpose(self.model_predictions[:, :, i])
+            # save only the probability of class being 1
+            predictions[:, i] = classifiers[i].predict_proba(x_train)[:, 1]
+
+        predictions = normalize(predictions, norm='l1', axis=1, copy=True, return_norm=False)
+
+        return predictions
+
+    @staticmethod
+    def apply_method(method, train_pred, valid_pred, train_labels, valid_labels):
+        '''
+        Applies on of the methods of the class for fitting an prediction
+        :param method:
+        :param train_pred:
+        :param valid_pred:
+        :param train_labels:
+        :param valid_labels:
+        :return:
+        '''
+        train_name = 'train_' + method
+        valid_name = 'predict_'+ method
+
+        print('Training method: {}'.format(method))
+        train_classifier = Regressions(train_pred, train_labels)
+        train_methods = dict(inspect.getmembers(train_classifier, predicate=inspect.ismethod))
+
+        validator = Regressions(valid_pred, valid_labels)
+        validation_methods = dict(inspect.getmembers(validator, predicate=inspect.ismethod))
+
+        classifiers = train_methods[train_name]()
+        predictions = validation_methods[valid_name](classifiers)
+        error = validator.calculate_accuracy(predictions)
+        print('Error on {}: {}'.format(method, error))
+        return error, predictions
 
 
 class NeuralNetwork(Bagging):
@@ -347,36 +453,17 @@ def average_errors():
     print('Error on geometric mean: {}'.format(bagging.geometric_mean()))
 
 
-def logistic_regression(train_pred, valid_pred, train_labels, valid_labels):
-    print('Logistic regression:')
-    train_classifier = Regressions(train_pred, train_labels)
-    validator = Regressions(valid_pred, valid_labels)
-
-    logistic_classifiers = train_classifier.train_logistic_regression()
-    logistic_predictions = validator.predict_logistic_regression(logistic_classifiers)
-    error = validator.calculate_accuracy(logistic_predictions)
-    print('Error on logistic regression: {}'.format(error))
-    return error, logistic_predictions
-
-
-def xgb(train_pred, valid_pred, train_labels, valid_labels):
-    print('Xgb')
-    train_classifier = Regressions(train_pred, train_labels)
-    validator = Regressions(valid_pred, valid_labels)
-
-    xgb_classifiers = train_classifier.train_xgb()
-    xgb_predictions = validator.predict_xgb(xgb_classifiers)
-    error = validator.calculate_accuracy(xgb_predictions)
-    print('Error on xgb: {}'.format(error))
-    return error, xgb_predictions
-
-
 def neural_network(train_pred, valid_pred, train_labels, valid_labels):
     print('Neural Network')
     train_classifier = NeuralNetwork(train_pred, train_labels)
     validator = NeuralNetwork(valid_pred, valid_labels)
 
     nn_model = train_classifier.train_neural_network()
+
+    train_predictions = train_classifier.predict_neural_network(nn_model)
+    train_error = train_classifier.calculate_accuracy(train_predictions)
+    print('Error on neural network (training data): {}'.format(train_error))
+
     nn_predictions = validator.predict_neural_network(nn_model)
     error = validator.calculate_accuracy(nn_predictions)
     print('Error on neural network: {}'.format(error))
@@ -390,6 +477,11 @@ def neural_netwokr_keras(train_pred, valid_pred, train_labels, valid_labels):
 
     print('Neural Network with Keras')
     nn_model_keras = train_classifier.train_keras_neural_network()
+
+    train_predictions = train_classifier.predict_keras_neural_network(nn_model_keras)
+    train_error = train_classifier.calculate_accuracy(train_predictions)
+    print('Error on keras neural network (training data): {}'.format(train_error))
+
     nn_predictions_keras = validator.predict_keras_neural_network(nn_model_keras)
     error = validator.calculate_accuracy(nn_predictions_keras)
     print('Error on keras neural network: {}'.format(error))
@@ -403,22 +495,27 @@ if __name__ == '__main__':
 
     errors = {}
 
-    if 'lr' in CLASSIFIERS:
-        lr_error, lr_predictions = logistic_regression(train_pred, valid_pred, train_labels, valid_labels)
-        errors['logistic_regression'] = lr_error
+    classic_boosts =\
+    [Regressions.apply_method(classifier, train_pred, valid_pred, train_labels, valid_labels)
+     for classifier in CLASSICCLASSIFIERS]
 
-    if 'nn' in CLASSIFIERS:
+    aggregated_predictions = np.array([item[1] for item in classic_boosts])
+    print('Error on aggregated predictions:')
+    print(Bagging(valid_pred, valid_labels).calculate_accuracy(bag_by_average(aggregated_predictions)))
+
+
+    if 'nn' in NEURALCLASSIFIERS:
         nn_error, nn_predictions = neural_network(train_pred, valid_pred, train_labels, valid_labels)
         errors['neural network'] = nn_error
 
-    if 'nn_keras' in CLASSIFIERS:
+    if 'nn_keras' in NEURALCLASSIFIERS:
         nn_keras_error, nn_keras_predictions = neural_netwokr_keras(train_pred, valid_pred, train_labels, valid_labels)
         errors['neural network keras'] = nn_keras_error
 
-    if 'xgb' in CLASSIFIERS:
-        xgb_error, xgb_predictions = xgb(train_pred, valid_pred, train_labels, valid_labels)
-        errors['xgb'] = xgb_error
 
     csv_models.print_model_accuracy()
     average_errors()
     print(errors)
+
+   # lr_xgb = Bagging(valid_pred, valid_labels).calculate_accuracy(bag_by_geomean([lr_predictions, xgb_predictions]))
+   # print('Error using xgb + lr {}'.format(lr_xgb))
