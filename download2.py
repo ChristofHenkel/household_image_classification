@@ -45,15 +45,19 @@ def ParseData(data_file):
 
 def DownloadImage(key_url):
     out_dir = sys.argv[2]
+    old_out_dir = sys.argv[3]
     (key, label, url) = key_url
-    filename = os.path.join(out_dir, str(label), '%s.jpg' % key)
+    filename = os.path.join(out_dir, str(label), '%s.jpeg' % key)
+    filename_old = os.path.join(old_out_dir, str(label), '%s.jpeg' % key)
     save_folder = os.path.join(out_dir, str(label))
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
-    if os.path.exists(filename):
-        print('Image %s already exists. Skipping download.' % filename)
+    if os.path.exists(filename_old):
+        #print('Image %s already exists. Skipping download.' % filename)
         return
-
+    if os.path.exists(filename):
+        #print('Image %s already exists. Skipping download.' % filename)
+        return
     try:
         # print('Trying to get %s.' % url)
         http = urllib3.PoolManager(50)
@@ -83,10 +87,10 @@ def DownloadImage(key_url):
 
 
 def Run():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print('Syntax: %s <train|validation|test.json> <output_dir/>' % sys.argv[0])
         sys.exit(0)
-    (data_file, out_dir) = sys.argv[1:]
+    (data_file, out_dir) = sys.argv[1:3]
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
