@@ -3,21 +3,27 @@ import global_variables
 from utilities import acc_prediction_valid, bag_by_average, bag_by_geomean
 import numpy as np
 
-models = ['models/Inceptionv3/Inception_LSTM/',
-          'models/InceptionResNetV2/LSTM/',
-          'models/DenseNet121/LSTM/',
-          'models/Inceptionv3/Inception_Dense/',
-          'models/Xception/GlobalPooling/',
-          'models/Xception/Gru_256/',
-          'models/Xception/Gru_512/',
-          'models/Xception/LSTM2/',
-          #'models/MobileNet/BiLSTM_256/',
-          #'models/MobileNet/SeperableConv/',
+models = [#'models/Inceptionv3/Inception_LSTM/',
+          #'models/InceptionResNetV2/LSTM/',
+          #'models/DenseNet121/LSTM/',
+          #'models/Inceptionv3/Inception_Dense/',
+          #'models/Xception/GlobalPooling/',
+          #'models/Xception/Gru_256/',
+          #'models/Xception/Gru_512/',
+          #'models/Xception/LSTM2/',
+          ##'models/MobileNet/BiLSTM_256/',
+          ##'models/MobileNet/SeperableConv/',
           'models/DenseNet201/Last_layer/',
-          'models/DenseNet201/Last_layer_with_dropout/'
+          'models/DenseNet201/Last_layer_with_dropout/',
+          'models/VGG19/Last_layer/',
+          'models/Xception/Last_layer/',
+'models/Xception/Gru_512_2/',
+#'models/Xception/Gru_256_2/'
+
           ]
 
-csv_files = [m + 'prediction_valid.csv' for m in models]
+csv_files = [m + 'prediction_valid_tta12.csv' for m in models]
+
 dfs = [pd.read_csv(csv_file, index_col=0) for csv_file in csv_files]
 
 for k, df in enumerate(dfs):

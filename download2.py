@@ -46,7 +46,7 @@ def ParseData(data_file):
 def DownloadImage(key_url):
     out_dir = sys.argv[2]
     (key, label, url) = key_url
-    filename = os.path.join(out_dir, str(label), '%s.jpg' % key)
+    filename = os.path.join(out_dir, str(label), '%s.jpeg' % key)
     save_folder = os.path.join(out_dir, str(label))
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)

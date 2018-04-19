@@ -7,6 +7,8 @@ from keras.models import load_model
 import os
 import numpy as np
 from tqdm import tqdm
+from random import shuffle
+import shutil
 
 
 
@@ -84,4 +86,31 @@ def bag_by_geomean(predicts_list):
 
     bagged_predicts **= (1. / len(predicts_list))
     return  bagged_predicts
+
+def get_label2class_id(directory):
+    classes = []
+    for subdir in sorted(os.listdir(directory)):
+        if os.path.isdir(os.path.join(directory, subdir)):
+            classes.append(subdir)
+    class_indices = dict(zip(classes, range(len(classes))))
+    return class_indices
+
+def create_chunks():
+
+    files = []
+    for folder in os.listdir('assets/train/'):
+        for fn in os.listdir('assets/train/' + folder + '/'):
+            files.append([folder,fn])
+
+
+    shuffle(files)
+
+
+    for k in tqdm(range(7)):
+        if not os.path.exists('chunk%s' % k):
+            os.makedirs('chunk%s' % k)
+        for fn in files[28000*k:28000*(k+1)]:
+            if not os.path.exists('chunk%s/%s' %(k,fn[0])):
+                os.makedirs('chunk%s/%s' %(k,fn[0]))
+            shutil.copyfile('assets/train/' + fn[0] + '/' + fn[1],'chunk%s/'%k+ fn[0] + '/' + fn[1])
 
