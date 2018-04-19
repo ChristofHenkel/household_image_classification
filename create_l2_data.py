@@ -7,9 +7,20 @@ import pandas as pd
 from utilities import top1_loss
 from tqdm import tqdm
 import os
+from utilities import bag_by_geomean, get_label2class_id
+import pickle
 
-def create_l2_data(model_path, model_fn):
-    valid_data_gen = ImageDataGenerator(rescale=1. / 255)
+def create_l2_train_data(model_path, model_fn, tta=0, out_path = None, out_name = None):
+    #valid_data_gen = ImageDataGenerator(rescale=1. / 255)
+    with open(model_path + 'train_data_gen.p','rb') as f:
+        valid_data_gen = pickle.load(f)
+    #valid_data_gen = ImageDataGenerator(rescale=1. / 255, vertical_flip=True,
+    #                                    rotation_range=20,
+    #                                    width_shift_range=0.2,
+    #                                    height_shift_range=0.2,
+    #                                    zoom_range=0.2,
+    #                                    shear_range=0.2)
+
     valid_generator = valid_data_gen.flow_from_directory(directory=VALID_FOLDER,
                                                          target_size=(224, 224),
                                                          batch_size=16,
@@ -20,7 +31,12 @@ def create_l2_data(model_path, model_fn):
         custom_model_objects['relu6'] = relu6
         custom_model_objects['DepthwiseConv2D']: DepthwiseConv2D
     model = load_model(model_path + model_fn, custom_objects=custom_model_objects)
-    x = model.predict_generator(valid_generator,verbose=1)
+
+    xs = []
+    for i in range(tta+1):
+        x = model.predict_generator(valid_generator,verbose=1)
+        xs.append(x)
+    x_bagged = bag_by_geomean(xs)
     fns = valid_generator.filenames
 
     label2labelid = (valid_generator.class_indices)
@@ -30,20 +46,72 @@ def create_l2_data(model_path, model_fn):
     prediction['fns'] = fns
     labels = [l for l in label2labelid]
     for l in labels:
-        prediction[l] = x[:,label2labelid[l]]
+        prediction[l] = x_bagged[:,label2labelid[l]]
 
-    prediction.to_csv(model_path + 'prediction_valid.csv',index=False)
+    if out_path is None:
+        out_path = model_path
+    if out_name is None:
+        out_name ='prediction_valid_tta%s.csv'%tta
+    prediction.to_csv(out_path + out_name,index=False)
+
+def create_l2_test_data(model_path, model_fn, tta=0, out_path = None, out_name = None):
+
+    with open(model_path + 'train_data_gen.p','rb') as f:
+        test_data_gen = pickle.load(f)
+    #valid_data_gen = ImageDataGenerator(rescale=1. / 255, vertical_flip=True,
+    #                                    rotation_range=20,
+    #                                    width_shift_range=0.2,
+    #                                    height_shift_range=0.2,
+    #                                    zoom_range=0.2,
+    #                                    shear_range=0.2)
+
+    test_generator = test_data_gen.flow_from_directory(directory='assets/',
+                                                         target_size=(224, 224),
+                                                         batch_size=16,
+                                                       classes = ['test'],
+                                                        class_mode='categorical', shuffle=False)
+
+    label2class_id = get_label2class_id('assets/train/')
+    #labelid2label = {label2class_id[label]: label for label in label2class_id}
+
+    print('loading model')
+    custom_model_objects = {'top1_loss':top1_loss}
+    if 'MobileNet' in model_path:
+        custom_model_objects['relu6'] = relu6
+        custom_model_objects['DepthwiseConv2D']: DepthwiseConv2D
+    model = load_model(model_path + model_fn, custom_objects=custom_model_objects)
+
+    xs = []
+    for i in range(tta+1):
+        x = model.predict_generator(test_generator,verbose=1)
+        xs.append(x)
+    x_bagged = bag_by_geomean(xs)
+    fns = test_generator.filenames
+
+    prediction = pd.DataFrame()
+    prediction['fns'] = fns
+    labels = [l for l in label2class_id]
+    for l in labels:
+        prediction[l] = x_bagged[:,label2class_id[l]]
+
+    if out_path is None:
+        out_path = model_path
+    if out_name is None:
+        out_name ='prediction_test_tta%s.csv'%tta
+    prediction.to_csv(out_path + out_name,index=False)
 
 
-#create_l2_data('models/Inceptionv3/Inception_LSTM/','inception_lstm.hdf5')
-#create_l2_data('models/InceptionResNetV2/LSTM/','inception_resnet_lstm.hdf5')
-#create_l2_data('models/DenseNet121/LSTM/','model.hdf5')
-#create_l2_data('models/Inceptionv3/Inception_Dense/','inception_dense.hdf5')
-#create_l2_data('models/Xception/GlobalPooling/','model.hdf5')
-#create_l2_data('models/Xception/Gru_256/','model_256.hdf5')
-#create_l2_data('models/Xception/Gru_512/','model_512.hdf5')
-#create_l2_data('models/Xception/LSTM2/','model.hdf5')
-#create_l2_data('models/MobileNet/BiLSTM_256/','mobilenet_bilstm.hdf5')
-#create_l2_data('models/MobileNet/SeperableConv/','mobilenet_sepconv.hdf5')
-#create_l2_data('models/DenseNet201/Last_layer/','model.hdf5')
-create_l2_data('models/DenseNet201/Last_layer_with_dropout/','model.hdf5')
+models = [#['models/Xception/Gru_512_2/','model.hdf5'],
+          #['models/DenseNet201/Last_layer/', 'model.hdf5'],
+          #['models/DenseNet201/Last_layer_with_dropout/', 'model.hdf5'],
+          #['models/VGG19/Last_layer/', 'model.hdf5'],
+          #['models/Xception/Last_layer/', 'model.hdf5'],
+          #['models/Xception/LSTM2/', 'model.hdf5'],
+          ['models/NASNetMobile/Last_layer/', 'model.hdf5'],
+          #['models/InceptionResNetV2/Last_layer/', 'model.hdf5']
+          ]
+
+for m in models:
+    create_l2_test_data(m[0],m[1],tta=12)
+
+#create_l2_train_data(m[0],m[1],tta=12)
