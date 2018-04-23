@@ -11,9 +11,11 @@ from utilities import bag_by_geomean, get_label2class_id
 import pickle
 
 def create_l2_train_data(model_path, model_fn, tta=0, out_path = None, out_name = None):
-    #valid_data_gen = ImageDataGenerator(rescale=1. / 255)
-    with open(model_path + 'train_data_gen.p','rb') as f:
-        valid_data_gen = pickle.load(f)
+    if tta==0:
+        valid_data_gen = ImageDataGenerator(rescale=1. / 255)
+    else:
+        with open(model_path + 'train_data_gen.p','rb') as f:
+            valid_data_gen = pickle.load(f)
     #valid_data_gen = ImageDataGenerator(rescale=1. / 255, vertical_flip=True,
     #                                    rotation_range=20,
     #                                    width_shift_range=0.2,
@@ -33,6 +35,8 @@ def create_l2_train_data(model_path, model_fn, tta=0, out_path = None, out_name 
     model = load_model(model_path + model_fn, custom_objects=custom_model_objects)
 
     xs = []
+
+
     for i in range(tta+1):
         x = model.predict_generator(valid_generator,verbose=1)
         xs.append(x)
@@ -101,17 +105,23 @@ def create_l2_test_data(model_path, model_fn, tta=0, out_path = None, out_name =
     prediction.to_csv(out_path + out_name,index=False)
 
 
-models = [#['models/Xception/Gru_512_2/','model.hdf5'],
-          #['models/DenseNet201/Last_layer/', 'model.hdf5'],
-          #['models/DenseNet201/Last_layer_with_dropout/', 'model.hdf5'],
-          #['models/VGG19/Last_layer/', 'model.hdf5'],
-          #['models/Xception/Last_layer/', 'model.hdf5'],
-          #['models/Xception/LSTM2/', 'model.hdf5'],
-          ['models/NASNetMobile/Last_layer/', 'model.hdf5'],
-          #['models/InceptionResNetV2/Last_layer/', 'model.hdf5']
-          ]
+OLD_MODELS = ['DenseNet121/LSTM_old/',
+              'InceptionResNetV2/LSTM_old/',
+              'Inceptionv3/Dense_old/',
+              'Inceptionv3/LSTM_old/',
+              'MobileNet/LSTM_old/',
+              'MobileNet/SeperableConv_old/',
+              'Xception/GlobalPooling_old/',
+              'Xception/Gru_256_old/',
+              'Xception/Gru_512_old/',
+              'ResNet50/Dense_old/'
+              'Xception/LSTM_old/',
+              ]
+OLD_MODELS = ['models/'+m for m in OLD_MODELS]
 
-for m in models:
-    create_l2_test_data(m[0],m[1],tta=12)
+#for m in OLD_MODELS:
+#    create_l2_train_data(m,'model.hdf5',tta=12)
+#    create_l2_test_data(m, 'model.hdf5', tta=12)
 
-#create_l2_train_data(m[0],m[1],tta=12)
+create_l2_train_data('models/DenseNet201/LSTM512/','model.hdf5',tta=0)
+create_l2_train_data('models/DenseNet201/LSTM512/','model.hdf5',tta=12)

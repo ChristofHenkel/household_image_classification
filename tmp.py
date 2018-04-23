@@ -75,3 +75,16 @@ from keras.applications.inception_resnet_v2 import InceptionResNetV2
 
 model = InceptionResNetV2(include_top=False,input_shape=(224,224,3))
 model.summary()
+
+from preprocessing import CustomImageDataGenerator
+ci = CustomImageDataGenerator(contrast_stretching=True,
+                              brightness_range=(0.5,1.5),
+                              contrast_range=(0.5,1.5),
+                              saturation_range=(0.5,1.5))
+
+for i in range(10):
+    gen = ci.flow_from_directory(directory='assets/valid/',
+                           target_size=(224, 224),
+                           batch_size=1, save_to_dir='debug/',
+                           class_mode='categorical', shuffle=False)
+    x,y = gen.__next__()

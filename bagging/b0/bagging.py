@@ -9,11 +9,10 @@ import pandas as pd
 from itertools import count
 
 import global_variables
+from create_submission import create_submission_from_prediction
 from sklearn.preprocessing import normalize
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import BaggingClassifier, AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 
 from keras.layers import Input, Dense, Conv1D, Flatten, MaxPool1D, TimeDistributed, CuDNNLSTM, GlobalMaxPool2D, GlobalAveragePooling2D
@@ -509,41 +508,15 @@ def neural_netwokr_keras(train_pred, valid_pred, train_labels, valid_labels):
 
 
 if __name__ == '__main__':
-    csv_models = CSVPredictions(MODELS, 'prediction_valid_tta12.csv')
-    csv_models_old = CSVPredictions(OLD_MODELS, tta=0)
+    bagging_folder = 'bagging/b0/'
+    prediction_fn = 'prediction_test_tta12.csv'
+    csv_models = CSVPredictions(MODELS,prediction_fn )
 
     xs = [df.values for df in csv_models.dfs]
     x = bag_by_geomean(xs)
     a = csv_models.dfs[0].copy()
     a[list(a.columns.values)] = x
+    a.to_csv(bagging_folder + prediction_fn)
 
-    csv_models.dfs.append(a)
-    csv_models.acc()
-    predictions, labels = csv_models.model_predictions, csv_models.labels
-    train_pred, valid_pred, train_labels, valid_labels = csv_models.train_valid_split(0.9)
-    errors = {}
+    create_submission_from_prediction(bagging_folder + prediction_fn, bagging_folder + 'submission.csv')
 
-    classic_boosts =\
-    [Regressions.apply_method(classifier, train_pred, valid_pred, train_labels, valid_labels)
-     for classifier in CLASSICCLASSIFIERS]
-
-    aggregated_predictions = np.array([item[1] for item in classic_boosts])
-    print('Error on aggregated predictions:')
-    print(Bagging(valid_pred, valid_labels).calculate_accuracy(bag_by_average(aggregated_predictions)))
-
-
-    if 'nn' in NEURALCLASSIFIERS:
-        nn_error, nn_predictions = neural_network(train_pred, valid_pred, train_labels, valid_labels)
-        errors['neural network'] = nn_error
-
-    if 'nn_keras' in NEURALCLASSIFIERS:
-        nn_keras_error, nn_keras_predictions = neural_netwokr_keras(train_pred, valid_pred, train_labels, valid_labels)
-        errors['neural network keras'] = nn_keras_error
-
-
-    csv_models.print_model_accuracy()
-    average_errors()
-    print(errors)
-
-   # lr_xgb = Bagging(valid_pred, valid_labels).calculate_accuracy(bag_by_geomean([lr_predictions, xgb_predictions]))
-   # print('Error using xgb + lr {}'.format(lr_xgb))
