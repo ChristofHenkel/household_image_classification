@@ -123,5 +123,5 @@ OLD_MODELS = ['models/'+m for m in OLD_MODELS]
 #    create_l2_train_data(m,'model.hdf5',tta=12)
 #    create_l2_test_data(m, 'model.hdf5', tta=12)
 
-create_l2_train_data('models/DenseNet201/LSTM512/','model.hdf5',tta=0)
+#create_l2_train_data('models/DenseNet201/LSTM512/','model.hdf5',tta=0)
 create_l2_train_data('models/DenseNet201/LSTM512/','model.hdf5',tta=12)

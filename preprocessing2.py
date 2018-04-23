@@ -436,6 +436,7 @@ class CustomImageDataGenerator(object):
                  samplewise_center=False,
                  featurewise_std_normalization=False,
                  samplewise_std_normalization=False,
+                 normalize = False,
                  zca_whitening=False,
                  zca_epsilon=1e-6,
                  rotation_range=0.,
@@ -469,6 +470,7 @@ class CustomImageDataGenerator(object):
         self.zoom_range = zoom_range
         self.channel_shift_range = channel_shift_range
         self.fill_mode = fill_mode
+        self.normalize = normalize
         self.cval = cval
         self.horizontal_flip = horizontal_flip
         self.vertical_flip = vertical_flip
@@ -579,6 +581,11 @@ class CustomImageDataGenerator(object):
         """
         if self.rescale:
             x *= self.rescale
+
+        if self.normalize:
+            x -= [0.485, 0.456, 0.406]
+            x /= [0.229, 0.224, 0.225]
+
         if self.samplewise_center:
             x -= np.mean(x, keepdims=True)
         if self.samplewise_std_normalization:
